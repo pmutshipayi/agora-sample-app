@@ -104,17 +104,19 @@ const App = () => {
     setConfig({...config, peerIds: [], joinSucceed: false});
   };
 
-  <View style={styles.max}>
+  return (
     <View style={styles.max}>
-      <View style={styles.buttonHolder}>
-        <TouchableOpacity onPress={startCall} style={styles.button}>
-          <Text style={styles.buttonText}> Start Call </Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={endCall} style={styles.button}>
-          <Text style={styles.buttonText}> End Call </Text>
-        </TouchableOpacity>
+      <View style={styles.max}>
+        <View style={styles.buttonHolder}>
+          <TouchableOpacity onPress={startCall} style={styles.button}>
+            <Text style={styles.buttonText}> Start Call </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={endCall} style={styles.button}>
+            <Text style={styles.buttonText}> End Call </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
-  </View>;
+  );
 };
 export default App;
