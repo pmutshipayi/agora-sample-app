@@ -1,115 +1,120 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * Generated with the TypeScript template
- * https://github.com/react-native-community/react-native-template-typescript
- *
- * @format
- */
-
-import React from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
+  Platform,
   Text,
-  useColorScheme,
+  TouchableOpacity,
   View,
+  PermissionsAndroid,
 } from 'react-native';
+// Import the RtcEngine class and view rendering components into your project.
+import RtcEngine from 'react-native-agora';
+// Import the UI styles.
+import styles from './src/components/style';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-const Section: React.FC<{
-  title: string;
-}> = ({children, title}) => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
+// Define a State interface.
+interface State {
+  appId: string;
+  channelName: string;
+  token: string;
+  joinSucceed: boolean;
+  peerIds: number[];
+}
 
 const App = () => {
-  const isDarkMode = useColorScheme() === 'dark';
+  const [engine, setEngine] = useState<RtcEngine>();
+  const [config, setConfig] = useState<State>({
+    appId: 'be4861b5d0354473bd432bacebd04c0e',
+    channelName: 'mutshi',
+    token:
+      '006be4861b5d0354473bd432bacebd04c0eIAAfR92I8AyXAk/EIpQ99d5bDexz08ZegrLyVzPjTFOkSAkLOh8AAAAAEAD1z9KPdB/6YQEAAQB0H/ph',
+    joinSucceed: false,
+    peerIds: [],
+  });
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const init = useCallback(async () => {
+    const {appId} = config;
+    const _engine = await RtcEngine.create(appId);
+    // Enable the video module.
+    await _engine.enableAudio();
+
+    // Listen for the UserJoined callback.
+    // This callback occurs when the remote user successfully joins the channel.
+    _engine.addListener('UserJoined', (uid, elapsed) => {
+      console.log('UserJoined', uid, elapsed);
+      const {peerIds} = config;
+      if (peerIds.indexOf(uid) === -1) {
+        setConfig({...config, peerIds: [...peerIds, uid]});
+      }
+    });
+
+    // Listen for the UserOffline callback.
+    // This callback occurs when the remote user leaves the channel or drops offline.
+    _engine.addListener('UserOffline', (uid: any, reason: any) => {
+      console.log('UserOffline', uid, reason);
+      const {peerIds} = config;
+      setConfig({...config, peerIds: peerIds.filter(id => id !== uid)});
+    });
+
+    // Listen for the JoinChannelSuccess callback.
+    // This callback occurs when the local user successfully joins the channel.
+    _engine.addListener('JoinChannelSuccess', (channel, uid, elapsed) => {
+      console.log('JoinChannelSuccess', channel, uid, elapsed);
+      setConfig({...config, joinSucceed: true});
+    });
+
+    setEngine(_engine);
+  }, [config]);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      requestCameraAndAudioPermission().then(() => {
+        console.log('requested!');
+      });
+    }
+    init();
+  }, [init]);
+
+  const requestCameraAndAudioPermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+      ]);
+      if (
+        granted['android.permission.RECORD_AUDIO'] ===
+          PermissionsAndroid.RESULTS.GRANTED &&
+        granted['android.permission.CAMERA'] ===
+          PermissionsAndroid.RESULTS.GRANTED
+      ) {
+        console.log('You can use the cameras & mic');
+      } else {
+        console.log('Permission denied');
+      }
+    } catch (err) {
+      console.warn(err);
+    }
   };
 
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit, j <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+  const startCall = async () => {
+    await engine?.joinChannel(config.token, config.channelName, null, 0);
+  };
+
+  const endCall = async () => {
+    await engine?.leaveChannel();
+    setConfig({...config, peerIds: [], joinSucceed: false});
+  };
+
+  <View style={styles.max}>
+    <View style={styles.max}>
+      <View style={styles.buttonHolder}>
+        <TouchableOpacity onPress={startCall} style={styles.button}>
+          <Text style={styles.buttonText}> Start Call </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={endCall} style={styles.button}>
+          <Text style={styles.buttonText}> End Call </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>;
 };
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
-
 export default App;
